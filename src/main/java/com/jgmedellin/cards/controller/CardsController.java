@@ -2,6 +2,7 @@ package com.jgmedellin.cards.controller;
 
 import com.jgmedellin.cards.constants.CardsConstants;
 import com.jgmedellin.cards.dto.CardDto;
+import com.jgmedellin.cards.dto.CardsContactInfoDto;
 import com.jgmedellin.cards.dto.ErrorResponseDto;
 import com.jgmedellin.cards.dto.ResponseDto;
 import com.jgmedellin.cards.service.ICardsService;
@@ -13,7 +14,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +26,24 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Cards API", description = "This API allows to Create, Read, Update and Delete cards in EazyBank")
 @RestController
 @RequestMapping(path="/api", produces = {MediaType.APPLICATION_JSON_VALUE})
-@AllArgsConstructor // Lombok annotation to generate a constructor with all the arguments
 @Validated // Perform validation on the request body
 public class CardsController {
 
   private final ICardsService iCardsService;
+
+  @Autowired
+  public CardsController(ICardsService iCardsService) {
+    this.iCardsService = iCardsService;
+  }
+
+  @Value("${build.version}")   // Injecting an env variable from application.properties (Approach 1)
+  private String buildVersion;
+
+  @Autowired
+  private Environment environment; // Injecting the environment object to get the active profile (Approach 2)
+
+  @Autowired
+  private CardsContactInfoDto cardsContactInfoDto; // Injecting the CardsContactInfoDto bean (Approach 3)
 
   @Operation(summary = "Create a new card", description = "Endpoint to create a new card in EazyBank")
   @ApiResponses({
@@ -110,6 +126,48 @@ public class CardsController {
               .status(HttpStatus.EXPECTATION_FAILED)
               .body(new ResponseDto(CardsConstants.STATUS_417, CardsConstants.MESSAGE_417_DELETE));
     }
+  }
+
+  @Operation(summary = "Get build information", description = "Endpoint to check the current API version")
+  @ApiResponses({
+          @ApiResponse(responseCode = "200", description = "HTTP Status OK"),
+          @ApiResponse(
+                  responseCode = "500",
+                  description = CardsConstants.MESSAGE_500,
+                  content = @Content(schema = @Schema(implementation = ErrorResponseDto.class))
+          )
+  })
+  @GetMapping("/build-info")
+  public ResponseEntity<String> getBuildInfo() {
+    return ResponseEntity.status(HttpStatus.OK).body("Current Build Version: " + buildVersion);
+  }
+
+  @Operation(summary = "Get java version", description = "Endpoint to check the Java version installed.")
+  @ApiResponses({
+          @ApiResponse(responseCode = "200", description = "HTTP Status OK"),
+          @ApiResponse(
+                  responseCode = "500",
+                  description = CardsConstants.MESSAGE_500,
+                  content = @Content(schema = @Schema(implementation = ErrorResponseDto.class))
+          )
+  })
+  @GetMapping("/java-version")
+  public ResponseEntity<String> getJavaVersion() {
+    return ResponseEntity.status(HttpStatus.OK).body(environment.getProperty("JAVA_HOME"));
+  }
+
+  @Operation(summary = "Get contact information", description = "Endpoint to check the contact information.")
+  @ApiResponses({
+          @ApiResponse(responseCode = "200", description = "HTTP Status OK"),
+          @ApiResponse(
+                  responseCode = "500",
+                  description = CardsConstants.MESSAGE_500,
+                  content = @Content(schema = @Schema(implementation = ErrorResponseDto.class))
+          )
+  })
+  @GetMapping("/contact-info")
+  public ResponseEntity<CardsContactInfoDto> getContactInfo() {
+    return ResponseEntity.status(HttpStatus.OK).body(cardsContactInfoDto);
   }
 
 }
